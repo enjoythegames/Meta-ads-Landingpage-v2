@@ -56,8 +56,9 @@
     <!-- Favicon -->
     <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
 
-    <!-- Preconnect for performance -->
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Preload only above-the-fold local assets -->
+    <link rel="preload" as="image" href="/images/banner.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/logo.webp" fetchpriority="high" />
   </head>
   <body>
     <div id="root"></div>
