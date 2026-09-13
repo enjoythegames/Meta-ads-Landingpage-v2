@@ -1,6 +1,7 @@
--- Optional starter data.
--- Run after schema.sql.
--- Edit these rows to match your real website content.
+-- Optional legacy/auxiliary rows.
+-- The current frontend stores the full runtime configuration in public.site_settings
+-- with site_key = main. Use the admin panel Save button to initialize/update it.
+-- Run after schema.sql if you want the auxiliary normalized tables pre-created with starter rows.
 
 insert into public.rating_distribution (star, percentage, sort_order)
 values

@@ -2,14 +2,16 @@
 
 React + Vite landing page with an `/admin` management interface.
 
-## Important
+## Central Supabase configuration
 
-The current UI build still persists admin data with browser `localStorage`. For multi-device production use, connect the data/auth layer to Supabase using:
+The public landing page and admin panel now use Supabase as the permanent source of truth for website settings.
 
-- `supabase/schema.sql`
-- `supabase/seed.sql`
-- `GUIDE.md`
-- `SETUP.md`
+- `public.site_settings` stores one JSON configuration record (`site_key = main`).
+- Public page loads the latest configuration at runtime with cache-busting.
+- Admin saves update Supabase only after the database write succeeds.
+- Supabase Storage stores uploaded logo/banner/screenshot/similar-app images.
+- Supabase Realtime updates already-open visitors; a 15-second polling fallback handles WebSocket interruptions.
+- Browser `localStorage` is **not** used for website settings.
 
 ## Quick start
 
@@ -30,14 +32,40 @@ Admin page:
 /admin
 ```
 
-Current local/static admin password: `admin123`.
+## Supabase setup
 
-**Change/remove this local password flow before public production use.** The production target is Supabase Authentication + the `admin_users` table + RLS.
+Run:
 
-## Production files
+```text
+supabase/schema.sql
+```
 
-- `GUIDE.md` — architecture and project overview
-- `SETUP.md` — GitHub, Vercel and Supabase setup steps
-- `supabase/schema.sql` — database, RLS, and storage SQL
-- `supabase/seed.sql` — optional initial rows
-- `.env.example` — Vite/Supabase environment variables
+If upgrading an existing database, run:
+
+```text
+supabase/migrate-cloud-config.sql
+```
+
+Create an Email/Password admin user in Supabase Authentication and authorize its UUID in `public.admin_users`.
+
+## Vercel environment variables
+
+```env
+VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_YOUR_PUBLIC_KEY
+```
+
+Never put a Supabase service-role/secret key or database password in the frontend.
+
+## Deployment
+
+Vercel settings:
+
+```text
+Framework: Vite
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
+```
+
+`vercel.json` is included so `/admin` works as a client-side route.

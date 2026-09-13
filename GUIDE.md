@@ -1,115 +1,44 @@
-# Landing Page + Admin Panel Guide
+# Production Guide
 
-This project contains the app-store-inspired landing page and a browser-based `/admin` panel.
+## What caused the old multi-device problem?
 
-## Important current status
+The previous implementation stored the complete `SiteConfig` object in browser `localStorage` and converted uploaded images into browser data URLs. That made each browser/device keep its own independent copy.
 
-The current admin implementation stores its configuration in the browser with `localStorage`. That means it is useful for local/static use, but changes are **not shared between different devices or browsers**.
+## What changed?
 
-For production use with GitHub + Vercel + Supabase, the frontend must be connected to Supabase for:
-
-- Admin authentication
-- Database-backed site configuration
-- Image storage
-- Multi-device persistence
-- Secure admin writes with Row Level Security (RLS)
-
-This ZIP includes the Supabase SQL needed for that backend and detailed setup instructions.
-
-## Project structure
+The website configuration is now stored centrally in Supabase:
 
 ```text
-work/
-├─ public/images/        # Existing landing-page images
-├─ src/                  # React/Vite application
-├─ supabase/
-│  ├─ schema.sql         # Database + RLS + storage setup
-│  └─ seed.sql           # Optional initial rows/template
-├─ GUIDE.md              # Overview and deployment guide
-├─ SETUP.md              # Step-by-step Supabase/GitHub/Vercel setup
-└─ .env.example          # Environment variable template
+public.site_settings
+  site_key = main
+  site_value = JSON SiteConfig
 ```
 
-## Admin URL
+The public page fetches this record at runtime. The admin panel writes to this record only after a successful Supabase request.
 
-Public site:
+Images are uploaded to the `site-media` Supabase Storage bucket and the public Storage URL is saved in the configuration.
 
-```text
-/
-```
+## Realtime / cross-device behavior
 
-Admin panel:
+The public page subscribes to Supabase Realtime for `public.site_settings` and also polls every 15 seconds as a fallback. Therefore:
 
-```text
-/admin
-```
+- a fresh browser/device sees the latest saved configuration
+- an already-open browser can update after an admin save
+- a failed WebSocket does not prevent eventual synchronization
 
-Current local/static admin first-login password:
+## Files changed
 
-```text
-admin123
-```
+- `src/App.tsx` — replaced local website-config persistence with Supabase read/write, Storage uploads, cache-safe runtime loading, Realtime updates, and polling fallback.
+- `supabase/schema.sql` — enables public read/admin write policies, Storage policies, and Realtime for `site_settings`.
+- `supabase/migrate-cloud-config.sql` — upgrade SQL for an existing Supabase project.
+- `SETUP.md` — updated production setup and acceptance test.
 
-**Do not use that password for a public production deployment.** Once Supabase Authentication is integrated, use a real Supabase email/password account and remove the browser-password authentication logic.
+## Supabase resources
 
-## Supabase database coverage
+- `public.site_settings` — single central settings record
+- `storage.site-media` — public image bucket for admin-uploaded media
+- `public.admin_users` — authorization table for admin actions
 
-The supplied `supabase/schema.sql` creates tables for the areas requested for the admin panel:
+## Important limitation
 
-- app information
-- site settings
-- social links
-- buttons / CTAs
-- screenshots
-- features
-- categories / tags
-- reviews
-- rating distribution
-- data safety
-- similar apps
-- SEO settings
-- section visibility / ordering
-- appearance settings
-- media metadata
-- admin users
-
-It also configures RLS policies and a Supabase Storage bucket for site media.
-
-## Recommended production architecture
-
-```text
-GitHub
-   │
-   ▼
-Vercel
-   │
-   ├── React/Vite public site
-   └── /admin
-
-Supabase
-   ├── Auth
-   ├── Postgres database
-   └── Storage
-```
-
-## Before production
-
-1. Create the Supabase project.
-2. Run `supabase/schema.sql` in the Supabase SQL Editor.
-3. Create an admin user in Supabase Authentication.
-4. Add that user's UUID to `public.admin_users` using the instructions in `SETUP.md`.
-5. Add the Supabase URL and anon/publishable key to Vercel Environment Variables.
-6. Connect the React admin/public data layer to Supabase.
-7. Remove the current `localStorage` persistence and browser-password authentication from `src/App.tsx`.
-8. Test all CRUD operations and RLS before sharing the public URL.
-
-## Do not commit secrets
-
-Never commit these to GitHub:
-
-- Supabase service-role key
-- database password
-- personal access tokens
-- private deployment tokens
-
-Only the public Supabase URL and anon/publishable browser key belong in the frontend environment configuration.
+The configuration is intentionally stored as one JSON record because this project is a single-site landing page. The existing normalized tables in the original schema are retained, but the current frontend uses `site_settings` as the single runtime source of truth so admin edits cannot diverge across separate browser stores.

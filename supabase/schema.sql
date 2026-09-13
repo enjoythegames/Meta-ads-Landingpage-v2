@@ -360,6 +360,17 @@ to authenticated
 using (bucket_id = 'site-media' and public.is_admin());
 
 -- ------------------------------------------------------------
+-- Realtime for the central site configuration record
+-- ------------------------------------------------------------
+do $$
+begin
+  execute 'alter publication supabase_realtime add table public.site_settings';
+exception
+  when duplicate_object then null;
+  when undefined_object then null;
+end $$;
+
+-- ------------------------------------------------------------
 -- Helpful indexes
 -- ------------------------------------------------------------
 
@@ -371,3 +382,14 @@ create index if not exists data_safety_sort_order_idx on public.data_safety(sort
 create index if not exists similar_apps_sort_order_idx on public.similar_apps(sort_order);
 create index if not exists section_settings_sort_order_idx on public.section_settings(sort_order);
 create index if not exists social_links_sort_order_idx on public.social_links(sort_order);
+
+-- ------------------------------------------------------------
+-- Admin Auth setup
+-- ------------------------------------------------------------
+-- 1) Create the admin account in Supabase Dashboard -> Authentication -> Users
+--    using Email/Password.
+-- 2) Copy that user's UUID from the Users page and run:
+--    insert into public.admin_users (user_id) values ('YOUR_AUTH_USER_UUID')
+--    on conflict (user_id) do nothing;
+-- 3) Do NOT store an admin password in this database or in site localStorage.
+--    Passwords are managed by Supabase Auth.
